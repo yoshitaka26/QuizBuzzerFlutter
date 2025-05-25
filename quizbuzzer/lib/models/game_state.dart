@@ -1,5 +1,31 @@
 import 'package:flutter/material.dart';
-import 'quiz_player.dart';
+import '../services/sound_service.dart';
+
+class QuizPlayer {
+  final Color color;
+  bool buttonState;
+  bool errorState;
+  int buttonNumber;
+  int correctCount;
+  int missCount;
+
+  QuizPlayer({
+    required this.color,
+    this.buttonState = false,
+    this.errorState = false,
+    this.buttonNumber = 0,
+    this.correctCount = 0,
+    this.missCount = 0,
+  });
+
+  String get countString => buttonNumber > 0 ? '$buttonNumber' : '';
+  String get scoreString {
+    if (correctCount == 0 && missCount == 0) return '';
+    final correct = correctCount > 0 ? '○${correctCount}' : '';
+    final miss = missCount > 0 ? '×${missCount}' : '';
+    return [correct, miss].where((s) => s.isNotEmpty).join(' ');
+  }
+}
 
 class GameState extends ChangeNotifier {
   static const List<Color> defaultColors = [
@@ -13,6 +39,7 @@ class GameState extends ChangeNotifier {
   int _nowOnAnswer = 1;
   int _answeredCount = 1;
   bool _isEnabledEndless = true;
+  final SoundService _soundService = SoundService();
 
   // getters
   List<QuizPlayer> get players => _players;
@@ -23,14 +50,27 @@ class GameState extends ChangeNotifier {
 
   // プレイヤー初期化
   void createPlayers() {
-    _players = defaultColors.take(8).map((color) => QuizPlayer(color: color)).toList();
+    _players.clear();
+    final colors = [
+      Colors.red,
+      Colors.blue,
+      Colors.green,
+      Colors.yellow,
+      Colors.purple,
+      Colors.orange,
+    ];
+
+    for (int i = 0; i < _playerCount; i++) {
+      _players.add(QuizPlayer(color: colors[i]));
+    }
     notifyListeners();
   }
 
   // プレイヤー数変更
   void setPlayerCount(int count) {
+    if (count < 1 || count > 6) return;
     _playerCount = count;
-    notifyListeners();
+    createPlayers();
   }
 
   // ボタンタップ処理
@@ -39,6 +79,9 @@ class GameState extends ChangeNotifier {
     
     final player = _players[index];
     if (player.buttonState) return;
+
+    // 音声再生
+    _soundService.playSound(SoundType.buzzer);
 
     player.buttonState = true;
     _tapList.add(player);
@@ -52,6 +95,9 @@ class GameState extends ChangeNotifier {
   void correctButtonTapped() {
     if (_tapList.isEmpty) return;
     
+    // 音声再生
+    _soundService.playSound(SoundType.correct);
+    
     final player = _tapList.first;
     player.correctCount++;
     resetButtonTapped();
@@ -60,6 +106,9 @@ class GameState extends ChangeNotifier {
   // 不正解処理
   void incorrectButtonTapped() {
     if (_tapList.isEmpty) return;
+    
+    // 音声再生
+    _soundService.playSound(SoundType.missed);
     
     final player = _tapList.first;
     player.errorState = true;
@@ -77,7 +126,9 @@ class GameState extends ChangeNotifier {
   // リセット処理
   void resetButtonTapped() {
     for (var player in _players) {
-      player.resetState();
+      player.buttonState = false;
+      player.errorState = false;
+      player.buttonNumber = 0;
     }
     _tapList.clear();
     _nowOnAnswer = 1;
