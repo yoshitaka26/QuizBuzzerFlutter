@@ -31,6 +31,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<AppSettings>(
         builder: (context, appSettings, child) {
           return MaterialApp(
+            debugShowCheckedModeBanner: false,
             title: '早押しボタン',
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
